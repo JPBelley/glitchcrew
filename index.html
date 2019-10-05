@@ -4,26 +4,12 @@
     <title>Test</title>
 
     <link rel="stylesheet" href="./style/style.css">
-    <style>
-      #playButton {
-        position: fixed;
-        bottom: 50px;
-        right: 100px;
-      }
-      #stopButton {
-        position: fixed;
-        bottom: 50px;
-        right: 50px;
-      }
-    </style>
   </head>
   <body>
-    <button id="playButton">Play</button>
-    <button id="stopButton">Stop</button>
 
     <audio id="theAudio" src="./assets/mp3/Bonobo_Cirrus.mp3"></audio>
 
     <script src="js/three.min.js"></script>
-    <script src="js/equalizer.js"></script>
+    <script type="module" src="./js/equalizer.js"></script>
   </body>
 </html>

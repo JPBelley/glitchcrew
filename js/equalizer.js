@@ -1,94 +1,81 @@
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+import * as THREE from '../build/three.module.js';
 
-var renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+import { EffectComposer } from '../postprocessing/EffectComposer.js';
+import { RenderPass } from '../postprocessing/RenderPass.js';
+import { ShaderPass } from '../postprocessing/ShaderPass.js';
+import { GlitchPass } from '../postprocessing/GlitchPass.js';
+
+import { RGBShiftShader } from '../shaders/RGBShiftShader.js';
+import { DotScreenShader } from '../shaders/DotScreenShader.js';
 
 
-var geometry = new THREE.BoxGeometry(3, 3, 3);
-var material = new THREE.MeshBasicMaterial({ color: 0x32CCFF });
+var scene = new THREE.Scene()
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, .1, 1000)
+var renderer = new THREE.WebGLRenderer()
+camera.position.x = Math.sin(0) * 80
+camera.position.y = 50
+
+camera.position.z = 150
+renderer.setClearColor(0xdddddd)
+renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.shadowMap.enabled = true
+renderer.shadowMapSoft = true
+
+// CUBE
+var geometry = new THREE.BoxGeometry(40, 40, 40);
+var material = new THREE.MeshPhongMaterial({ color: 0x32CCFF });
 var cube = new THREE.Mesh(geometry, material);
-cube.position.x = -3;
-cube.position.y = 1;
-cube.position.z = 1;
-var cubes = [];
-cubes.push(cube);
+scene.add(cube)
 
-var i = 0;
-while (i < 43) {
-  var newMaterial = material.clone();
-  newMaterial.color.set(0x32CCFF);
-  var newCube = new THREE.Mesh(geometry, newMaterial);
-  newCube.position.x = 4 * i;
-  newCube.position.y = 1;
-  newCube.position.z = 1;
-  cubes.push(newCube);
-  i += 1;
-};
+//LIGHTS
+var light, composer;
+light = new THREE.DirectionalLight(0xff);
+light.position.set(100, 100, 100);
+light.lookAt(cube.position)
+scene.add(light);
+camera.lookAt(cube.position)
+document.body.appendChild(renderer.domElement)
 
-cubes.forEach(function (c) {
-  scene.add(c);
-});
+// POSTPRECESSING
+composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
 
+var effectGlitch = new GlitchPass(64)
+composer.addPass(effectGlitch)
+// var effect = new ShaderPass(DotScreenShader);
+// effect.uniforms['scale'].value = 4;
+// composer.addPass(effect);
 
-camera.position.x = 170;
-camera.position.y = 15;
-camera.position.z = 50;
-camera.rotation.y = 365;
+var effect = new ShaderPass(RGBShiftShader);
+effect.uniforms['amount'].value = 0;
+composer.addPass(effect);
 
-console.log(camera);
-
-
-var listener = new THREE.AudioListener();
-camera.add(listener);
-
-// create an Audio source
-var sound = new THREE.Audio(listener);
-
-// load a sound and set it as the Audio object's buffer
-var audioLoader = new THREE.AudioLoader();
-audioLoader.load('assets/mp3/Bonobo_Cirrus.mp3', function (buffer) {
-  sound.setBuffer(buffer);
-  sound.setLoop(true);
-  sound.setVolume(0.5);
-});
-
-// create an AudioAnalyser, passing in the sound and desired fftSize
-var analyser = new THREE.AudioAnalyser(sound, 128);
-
-// get the average frequency of the sound
-var data = analyser.getFrequencyData();
-
-
-console.log(data);
-
-var animate = function () {
-  requestAnimationFrame(animate);
+var increment = 0;
+var glitchOn = false;
+var render = function () {
+  increment += 0.01
+  requestAnimationFrame(render);
+  cube.position.y += Math.sin(increment) * 0.05
+  cube.rotation.y += 0.01
+  cube.rotation.x += 0.03
+  effect.uniforms['amount'].value = Math.sin(5 * increment) * 0.1;
+  composer.render(scene, camera);
+  glitchOn = Math.sin(increment * 3) > 0 ? false : true
+  effectGlitch.goWild = glitchOn;
   
-  cubes.forEach(function (c, i) {
-    c.position.y = 0.1 * data[i];
-  });
-
-  render();
 };
 
-animate();
+window.addEventListener('resize', onWindowResize, false);
 
-function render() {
-  data = analyser.getFrequencyData();
+render();
 
-  renderer.render(scene, camera);
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+
 }
-
-var playButton = document.getElementById('playButton');
-playButton.addEventListener('click', () => {
-  sound.play();
-
-});
-
-var stopButton = document.getElementById('stopButton');
-stopButton.addEventListener('click', () => {
-  sound.stop();
-  console.log(data[9]);
-});
